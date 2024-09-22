@@ -34,6 +34,7 @@ CONF_BIN = "bank_identification_number"
 CONF_ACCOUNTS = "accounts"
 CONF_HOLDINGS = "holdings"
 CONF_ACCOUNT = "account"
+CONF_PRODUCTID = "productID"
 
 ATTR_ACCOUNT = CONF_ACCOUNT
 ATTR_BANK = "bank"
@@ -52,6 +53,7 @@ PLATFORM_SCHEMA = SENSOR_PLATFORM_SCHEMA.extend(
         vol.Required(CONF_USERNAME): cv.string,
         vol.Required(CONF_PIN): cv.string,
         vol.Required(CONF_URL): cv.string,
+        vol.Required(CONF_PRODUCTID): cv.string,
         vol.Optional(CONF_NAME): cv.string,
         vol.Optional(CONF_ACCOUNTS, default=[]): cv.ensure_list(SCHEMA_ACCOUNTS),
         vol.Optional(CONF_HOLDINGS, default=[]): cv.ensure_list(SCHEMA_ACCOUNTS),
@@ -83,7 +85,7 @@ def setup_platform(
         acc[CONF_ACCOUNT]: acc[CONF_NAME] for acc in config[CONF_HOLDINGS]
     }
 
-    client = FinTsClient(credentials, fints_name, account_config, holdings_config)
+    client = FinTsClient(credentials, fints_name, account_config, holdings_config,product_id=config[CONF_PRODUCTID])
     balance_accounts, holdings_accounts = client.detect_accounts()
     accounts: list[SensorEntity] = []
 
@@ -127,6 +129,7 @@ class FinTsClient:
         name: str,
         account_config: dict,
         holdings_config: dict,
+        product_id: str,
     ) -> None:
         """Initialize a FinTsClient."""
         self._credentials = credentials
@@ -135,6 +138,7 @@ class FinTsClient:
         self.name = name
         self.account_config = account_config
         self.holdings_config = holdings_config
+        self.product_id = product_id
 
     @cached_property
     def client(self) -> FinTS3PinTanClient:
@@ -149,6 +153,7 @@ class FinTsClient:
             self._credentials.login,
             self._credentials.pin,
             self._credentials.url,
+            self.product_id,
         )
 
     def get_account_information(self, iban: str) -> dict | None:
@@ -298,3 +303,4 @@ class FinTsHoldingsAccount(SensorEntity):
             attributes[price_name] = holding.market_value
 
         return attributes
+
